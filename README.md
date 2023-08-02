@@ -18,14 +18,14 @@ The motivation for distributed training lies in addressing the challenges posed 
 2. **Faster Training**: More computer => more computing power => faster training
 
 
-3. **Handling Big Data**: Distributed training leverages data parallelism, where each machine processes a subset of the data simultaneously. T
+3. **Handling Big Data**: Distributed training leverages data parallelism, where each machine processes a subset of the data simultaneously.
 4. **Scalability**: To have more computing power, just add more computer and ethernet cable. 
 ## Requirements
-1. Multiple Computers: At least two computers with sufficient computational power and storage.
-2. Ethernet Network: A reliable and fast ethernet network infrastructure (minimum Gigabit Ethernet recommended).
-3. Docker: Install Docker on all computers involved in distributed training.
-4. Common Deep Learning Framework: Familiarity with TensorFlow.
-5. SSH Access: Basic knowledge of SSH for remote access between computers.
+1. Multiple Computers: At least two computers with NVIDIA GPU on each computer (NVIDIA allowed CUDA to be utilized, AMD GPU can't work on this tutorial).
+2. Ethernet Network: Need an Ethernet hub, that connect to wifi then connect to the two computers (for faster data tranferring).
+3. All computers running `Ubuntu 22.04`
+![Alt Text](/media/IMG_4958.HEIC)
+
 
 
 ## Step 1: Preparing Your Computers
@@ -34,7 +34,13 @@ Ensure that all computers involved meet the minimum system requirements for runn
 
 ## Step 2: Setting Up the Ethernet Network
 1. Connect all the computers to the same ethernet network switch/router using ethernet cables. Ensure stable connections.
-2. Verify connectivity by pinging each computer from the others to ensure they can communicate with each other.
+
+
+## Step 3: Figure out local network IPs
+1. In the computer command line type
+`ifconfig`
+the IP address will look like:
+```inet 192.168.1.17 netmask 0xffffff00 broadcast 192.168.1.255```
 
 
 ## Step 3: Configuring SSH Access
