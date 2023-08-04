@@ -190,3 +190,52 @@ best_model_name, best_model_val_acc = best_model_info
 print(f"\nBest model architecture: {best_model_name}")
 print(f"Best model validation accuracy: {best_model_val_acc}")
 ```
+
+The code is running on a Docker container. Make sure you installed nvidia driver for your GPU
+```
+# Use the TensorFlow GPU base image
+FROM tensorflow/tensorflow:latest-gpu as Builder
+
+# Install Conda
+# Install required packages for downloading Miniconda
+# Install PyCUDA
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    python3-pip \
+    cuda-toolkit-12-2 \
+    openssh-client
+
+FROM tensorflow/tensorflow:latest-gpu as PipInstaller
+
+# Copy system-level packages from the builder image
+COPY --from=builder /usr/local/cuda /usr/local/cuda
+
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the requirements.txt file to the container's working directory
+COPY . .
+# COPY requirements.txt .
+# COPY data-source/ .
+
+# Install dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
+# Set the entry point to run main.py when the container starts
+# ENTRYPOINT ["python", "-m", "src.distributed_training"]
+# ENTRYPOINT [ "python", "-m", "src.single_machine_training" ]
+ENTRYPOINT ["python", "-m", "src.rework_distributed_from_mnist"]
+# ENTRYPOINT [ "ls", "-la", "/root/.ssh/" ]
+```
+
+Run the script on Master node:
+`sudo docker stop worker-0 | true && sudo docker rm worker-0 | true && sudo docker rmi --force my_tensorflow_app && sudo docker build -t my_tensorflow_app . && sudo docker run --gpus all -p 2222:2222 -e TF_CONFIG='{"cluster": {"worker": ["192.168.1.100:2222", "192.168.1.101:2222"]}, "task": {"type": "worker", "index": 0}}' --name worker-0  my_tensorflow_app`
+
+Run the script on Worker node:
+`sudo docker stop worker-1 | true && sudo docker rm worker-1 | true && sudo docker rmi --force my_tensorflow_app && sudo docker build -t my_tensorflow_app . && sudo docker run --gpus all -p 2222:2222 -e TF_CONFIG='{"cluster": {"worker": ["192.168.1.100:2222", "192.168.1.101:2222"]}, "task": {"type": "worker", "index": 1}}' --name worker-1  my_tensorflow_app
+`
+!!! Make sure there's ssh key from Master node to all Worker node !!!
+
