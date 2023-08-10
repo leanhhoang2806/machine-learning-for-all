@@ -239,3 +239,106 @@ Run the script on Worker node:
 `
 !!! Make sure there's ssh key from Master node to all Worker node !!!
 
+========================================================================================================================================================
+# Object reconition using pre-trained model on Waymo open data set
+
+Waymo has an open data set for cameras and lidar for independent researcher to experiment their algorithm. This article are meant to process a single segment of camera recorded. How to parse the Image and apply a pre-trained object recognition into the frame data. 
+
+```
+import os
+import tensorflow.compat.v1 as tf
+import math
+import numpy as np
+import itertools
+import numpy as np
+import tensorflow as tf
+from PIL import Image, ImageDraw
+import os
+
+from waymo_open_dataset.utils import range_image_utils
+from waymo_open_dataset.utils import transform_utils
+from waymo_open_dataset.utils import  frame_utils
+from waymo_open_dataset import dataset_pb2 as open_dataset
+import matplotlib.pyplot as plt
+import io
+import pyarrow.parquet as pq
+
+# make sure to download this model to the same directory as this file
+detection_model = tf.saved_model.load("./ssd_mobilenet_v2_2")
+def download_and_run_model(pil_image):
+    # Load the image
+    image_rgb = np.array(pil_image)
+
+    # Prepare the image for object detection
+    input_tensor = tf.convert_to_tensor(image_rgb)
+    input_tensor = input_tensor[tf.newaxis, ...]
+
+    # Perform object detection
+    detections = detection_model(input_tensor)
+
+    return detections
+
+
+output_dir = './object-detection-results' 
+# Save the image to the output directory
+os.makedirs(output_dir, exist_ok=True)
+
+def visualize_objects(image, detections, image_name):
+    image_rgb = np.array(image)
+
+    detection_boxes = detections['detection_boxes'][0].numpy()
+    detection_scores = detections['detection_scores'][0].numpy()
+    detection_classes = detections['detection_classes'][0].numpy().astype(np.uint32)
+
+    plt.imshow(image_rgb)
+
+    for i in range(len(detection_boxes)):
+        if detection_scores[i] > 0.5:
+            ymin, xmin, ymax, xmax = detection_boxes[i]
+            h, w, _ = image_rgb.shape
+            left = int(xmin * w)
+            top = int(ymin * h)
+            right = int(xmax * w)
+            bottom = int(ymax * h)
+            rect = plt.Rectangle((left, top), right - left, bottom - top,
+                                 fill=False, edgecolor='green', linewidth=2)
+            plt.gca().add_patch(rect)
+
+   
+    output_path = os.path.join(output_dir, f"{image_name}.png")
+    plt.savefig(output_path, bbox_inches='tight')
+    plt.close()
+
+def process_one_frame(image_bytes, frame_name):
+        
+    # Convert the image bytes into a PIL image
+    pil_image = Image.open(io.BytesIO(image_bytes))
+    detections = download_and_run_model(pil_image)
+    print(f"Frame name: {frame_name}")
+    visualize_objects(pil_image, detections, f"{frame_name}")
+
+def process_one_file(FILENAME):
+    dataset = tf.data.TFRecordDataset(FILENAME, compression_type='')
+    for data in dataset:
+        frame = open_dataset.Frame()
+        frame.ParseFromString(bytearray(data.numpy()))
+        frame_name = frame.context.name
+        process_one_frame(frame, frame_name)
+
+
+# Define the path to the Parquet file
+parquet_file_path = './training_camera_image_10017090168044687777_6380_000_6400_000.parquet'
+
+# Open the Parquet file
+parquet_table = pq.read_table(parquet_file_path)
+
+# Convert the Parquet table to a Pandas DataFrame
+df = parquet_table.to_pandas()
+
+# Print the values of each column in the first row
+# Extract two columns by name
+selected_columns = df[['key.segment_context_name', '[CameraImageComponent].image']]
+
+for index, row in selected_columns.iterrows():
+    process_one_frame(row[1], f"{index}_{row[0]}")
+```
