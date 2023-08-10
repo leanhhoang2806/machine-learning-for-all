@@ -241,7 +241,7 @@ Run the script on Worker node:
 
 ========================================================================================================================================================
 # Object reconition using pre-trained model on Waymo open data set
-
+![Object Detection GIF](media/animation.gif)
 Waymo has an open data set for cameras and lidar for independent researcher to experiment their algorithm. This article are meant to process a single segment of camera recorded. How to parse the Image and apply a pre-trained object recognition into the frame data. 
 
 ```
